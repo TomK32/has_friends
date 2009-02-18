@@ -11,14 +11,17 @@ class Friendship < ActiveRecord::Base
   named_scope :pending, :conditions => {:status => 'pending'}
   named_scope :accepted, :conditions => {:status => 'accepted'}
   named_scope :requested, :conditions => {:status => 'requested'}
+  named_scope :deleted, :conditions => {:status => 'deleted'}
+  named_scope :active, :conditions => 'friendships.status IS NOT "deleted"'
   
   # associations
   belongs_to :user
   belongs_to :friend, :class_name => 'User', :foreign_key => 'friend_id'
   
   # callback
-  after_destroy do |f|
-    User.decrement_counter(:friends_count, f.user_id)
+  after_destroy :descrement_friend_count
+  def decrement_friend_count
+    User.decrement_counter(:friends_count, user_id)
   end
   
   def pending?
@@ -36,5 +39,11 @@ class Friendship < ActiveRecord::Base
   def accept!
     User.increment_counter(:friends_count, user.id) unless accepted?
     update_attribute(:status, 'accepted')
+  end
+
+  # unlike a destroy this will keep the record and prevent future friendships requests
+  def enemies!
+    decrement_friend_count
+    update_attribute(:status, 'deleted')
   end
 end

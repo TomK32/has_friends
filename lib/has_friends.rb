@@ -5,12 +5,16 @@ module SimplesIdeias
     end
     
     module ClassMethods
-      def has_friends
+      def has_friends(default_status = 'accepted')
         include SimplesIdeias::Friends::InstanceMethods
         
         has_many :friendships
-        has_many :friends, :through => :friendships, :source => :friend, :conditions => "friendships.status = 'accepted'"
-        
+        has_many :friends, :through => :friendships, :source => :friend, :conditions =>
+            ['"friendships".status != "deleted"' +
+              (default_status.nil? ? "" :  "AND friendships.status = #{default_status}")]
+        has_many :friend_for, :through => :friendships, :source => :user, :conditions =>
+            ['"friendships".status != "deleted"' +
+              (default_status.nil? ? "" :  "AND friendships.status = #{default_status}")]
         after_destroy :destroy_all_friendships
       end
     end
@@ -63,6 +67,12 @@ module SimplesIdeias
       
       def is?(friend)
         self.id == friend.id
+      end
+
+      # 
+      def remove_friendship(former_friend)
+        former_friendship = friendships.first :conditions => {:friend_id => former_friend.id}
+        former_friendship.enemies!
       end
       
       private
