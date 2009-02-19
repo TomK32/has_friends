@@ -46,7 +46,18 @@ module SimplesIdeias
           
           return friendship, Friendship::STATUS_FRIENDSHIP_ACCEPTED
         end
-        
+
+        # You stole my wife, burnt my house and ruined my company but let's be BFF again
+        if friendship && friendship.deleted?
+          if request.accepted?
+            friendship.update_attribute(:status, request.status)
+            friendship.accept!
+            return friendship, Friendship::STATUS_FRIENDSHIP_ACCEPTED
+          end
+           friendship.update_attribute(:status, 'requested')
+           return nil, Friendship::STATUS_ALREADY_REQUESTED
+        end
+
         # we didn't find a friendship, so let's create one!
         friendship = self.friendships.create(:friend_id => friend.id, :status => 'requested')
 
@@ -62,14 +73,13 @@ module SimplesIdeias
       end
       
       def friendship_for(friend)
-        friendships.first :conditions => {:friend_id => friend.id}
+        friendships.first :conditions => {:friend_id => friend.id} if friend
       end
       
       def is?(friend)
         self.id == friend.id
       end
 
-      # 
       def remove_friendship(former_friend)
         former_friendship = friendships.first :conditions => {:friend_id => former_friend.id}
         former_friendship.enemies!
